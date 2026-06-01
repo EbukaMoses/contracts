@@ -5,6 +5,7 @@ members = [
   "stealth-sender",
   "stealth-splitter",
   "wraith-names",
+  "bench",
 ]
 resolver = "2"
 
