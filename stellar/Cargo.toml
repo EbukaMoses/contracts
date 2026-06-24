@@ -5,6 +5,7 @@ members = [
   "stealth-sender",
   "stealth-splitter",
   "wraith-names",
+  "contracts/stellar/stealth-batch-sender",
   "bench",
   "wraith-asset-policy",
 ]
