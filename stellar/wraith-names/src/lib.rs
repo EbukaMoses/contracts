@@ -82,6 +82,9 @@ pub enum NamesError {
     InvalidThreshold = 15,
 }
 
+const TTL_THRESHOLD: u32 = 17280;    // ~1 day
+const TTL_EXTEND_TO: u32 = 518400;   // ~30 days
+
 #[contract]
 pub struct WraithNamesContract;
 
@@ -216,7 +219,8 @@ impl WraithNamesContract {
         let name_hash = Self::hash_name(env, &name);
         let name_key = DataKey::Name(name_hash.clone());
 
-        if env.storage().instance().has(&name_key) {
+        // Check not taken
+        if env.storage().persistent().has(&name_key) {
             return Err(NamesError::NameTaken);
         }
 
@@ -225,14 +229,19 @@ impl WraithNamesContract {
             stealth_meta_address: stealth_meta_address.clone(),
             owner,
         };
-        env.storage().instance().set(&name_key, &entry);
+
+        env.storage().persistent().set(&name_key, &entry);
 
         let meta_hash = BytesN::from_array(env, &env.crypto().sha256(&stealth_meta_address).to_array());
         let meta_hash =
             BytesN::from_array(&env, &env.crypto().sha256(&stealth_meta_address).to_array());
+        let reverse_key = DataKey::Reverse(meta_hash);
         env.storage()
-            .instance()
-            .set(&DataKey::Reverse(meta_hash), &name);
+            .persistent()
+            .set(&reverse_key, &name_hash);
+
+        // Extend TTLs
+        Self::extend_ttls(&env, &name_key, Some(&reverse_key));
 
         env.events().publish(
             (symbol_short!("register"), name_hash),
@@ -260,7 +269,7 @@ impl WraithNamesContract {
 
         let entry: NameEntry = env
             .storage()
-            .instance()
+            .persistent()
             .get(&name_key)
             .ok_or(NamesError::NameNotFound)?;
 
@@ -273,7 +282,7 @@ impl WraithNamesContract {
             &env.crypto().sha256(&entry.stealth_meta_address).to_array(),
         );
         env.storage()
-            .instance()
+            .persistent()
             .remove(&DataKey::Reverse(old_meta_hash));
 
         let new_entry = NameEntry {
@@ -281,14 +290,18 @@ impl WraithNamesContract {
             stealth_meta_address: new_meta_address.clone(),
             owner,
         };
-        env.storage().instance().set(&name_key, &new_entry);
+        env.storage().persistent().set(&name_key, &new_entry);
 
         let new_meta_hash = BytesN::from_array(env, &env.crypto().sha256(&new_meta_address).to_array());
         let new_meta_hash =
             BytesN::from_array(&env, &env.crypto().sha256(&new_meta_address).to_array());
+        let reverse_key = DataKey::Reverse(new_meta_hash);
         env.storage()
-            .instance()
-            .set(&DataKey::Reverse(new_meta_hash), &name);
+            .persistent()
+            .set(&reverse_key, &name_hash);
+
+        // Extend TTLs
+        Self::extend_ttls(&env, &name_key, Some(&reverse_key));
 
         env.events().publish(
             (symbol_short!("register"), name_hash),
@@ -304,7 +317,7 @@ impl WraithNamesContract {
 
         let entry: NameEntry = env
             .storage()
-            .instance()
+            .persistent()
             .get(&name_key)
             .ok_or(NamesError::NameNotFound)?;
 
@@ -319,15 +332,14 @@ impl WraithNamesContract {
             &env.crypto().sha256(&entry.stealth_meta_address).to_array(),
         );
         env.storage()
-            .instance()
+            .persistent()
             .remove(&DataKey::Reverse(meta_hash));
-        env.storage().instance().remove(&name_key);
-        env.storage()
-            .instance()
-            .remove(&DataKey::Guardians(name_hash.clone()));
-        env.storage()
-            .instance()
-            .remove(&DataKey::Recovery(name_hash.clone()));
+
+        // Remove name
+        env.storage().persistent().remove(&name_key);
+
+        // Extend instance TTL
+        env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
 
         env.events()
             .publish((symbol_short!("release"), name_hash), name);
@@ -374,11 +386,15 @@ impl WraithNamesContract {
     /// Resolve a name to its stealth meta-address.
     pub fn resolve(env: Env, name: String) -> Result<Bytes, NamesError> {
         let name_hash = Self::hash_name(&env, &name);
+        let name_key = DataKey::Name(name_hash);
         let entry: NameEntry = env
             .storage()
-            .instance()
-            .get(&DataKey::Name(name_hash))
+            .persistent()
+            .get(&name_key)
             .ok_or(NamesError::NameNotFound)?;
+        
+        Self::extend_ttls(&env, &name_key, None);
+        
         Ok(entry.stealth_meta_address)
     }
 
@@ -386,226 +402,34 @@ impl WraithNamesContract {
     pub fn name_of(env: Env, stealth_meta_address: Bytes) -> Result<String, NamesError> {
         let meta_hash =
             BytesN::from_array(&env, &env.crypto().sha256(&stealth_meta_address).to_array());
-        let name: String = env
+        let reverse_key = DataKey::Reverse(meta_hash);
+        let name_hash: BytesN<32> = env
             .storage()
-            .instance()
-            .get(&DataKey::Reverse(meta_hash))
+            .persistent()
+            .get(&reverse_key)
             .ok_or(NamesError::NameNotFound)?;
-        Ok(name)
-    }
-
-    /// Set guardians and threshold for a name. Caller must be the current owner.
-    /// Clears any pending recovery proposal.
-    pub fn set_guardians(
-        env: Env,
-        name: String,
-        guardians: Vec<Address>,
-        threshold: u32,
-    ) -> Result<(), NamesError> {
-        let name_hash = Self::hash_name(&env, &name);
+        let name_key = DataKey::Name(name_hash);
         let entry: NameEntry = env
             .storage()
-            .instance()
-            .get(&DataKey::Name(name_hash.clone()))
+            .persistent()
+            .get(&name_key)
             .ok_or(NamesError::NameNotFound)?;
+        
+        Self::extend_ttls(&env, &name_key, Some(&reverse_key));
 
-        entry.owner.require_auth();
-
-        if guardians.len() > 7 {
-            return Err(NamesError::TooManyGuardians);
-        }
-        if threshold < 1 || threshold > guardians.len() {
-            return Err(NamesError::InvalidThreshold);
-        }
-
-        env.storage().instance().set(
-            &DataKey::Guardians(name_hash.clone()),
-            &GuardianConfig { guardians, threshold },
-        );
-        env.storage()
-            .instance()
-            .remove(&DataKey::Recovery(name_hash));
-
-        Ok(())
+        Ok(entry.name)
     }
 
-    /// Propose a recovery. `proposer` must be a guardian. No pending proposal may exist.
-    pub fn propose_recovery(
-        env: Env,
-        proposer: Address,
-        name: String,
-        new_owner: Address,
-        new_meta_address: Bytes,
-    ) -> Result<(), NamesError> {
-        proposer.require_auth();
-
-        if new_meta_address.len() != 64 {
-            return Err(NamesError::InvalidMetaAddress);
+    /// Private helper to extend TTLs for both the persistent entry and the contract instance.
+    fn extend_ttls(env: &Env, name_key: &DataKey, reverse_key: Option<&DataKey>) {
+        env.storage().persistent().extend_ttl(name_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        if let Some(r_key) = reverse_key {
+            env.storage().persistent().extend_ttl(r_key, TTL_THRESHOLD, TTL_EXTEND_TO);
         }
-
-        let name_hash = Self::hash_name(&env, &name);
-
-        // Name must exist.
-        if !env
-            .storage()
-            .instance()
-            .has(&DataKey::Name(name_hash.clone()))
-        {
-            return Err(NamesError::NameNotFound);
-        }
-
-        let config: GuardianConfig = env
-            .storage()
-            .instance()
-            .get(&DataKey::Guardians(name_hash.clone()))
-            .ok_or(NamesError::NotGuardian)?;
-
-        if !Self::is_guardian(&proposer, &config.guardians) {
-            return Err(NamesError::NotGuardian);
-        }
-
-        if env
-            .storage()
-            .instance()
-            .has(&DataKey::Recovery(name_hash.clone()))
-        {
-            return Err(NamesError::ProposalAlreadyExists);
-        }
-
-        let proposal = RecoveryProposal {
-            new_owner,
-            new_meta_address,
-            proposed_at: env.ledger().sequence(),
-            approvals: Vec::from_array(&env, [proposer]),
-        };
-        env.storage()
-            .instance()
-            .set(&DataKey::Recovery(name_hash), &proposal);
-
-        Ok(())
+        env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
     }
 
-    /// Approve a pending recovery. `approver` must be a guardian not already in approvals.
-    /// If threshold met and delay elapsed, executes the recovery.
-    pub fn approve_recovery(env: Env, approver: Address, name: String) -> Result<(), NamesError> {
-        approver.require_auth();
-
-        let name_hash = Self::hash_name(&env, &name);
-
-        let config: GuardianConfig = env
-            .storage()
-            .instance()
-            .get(&DataKey::Guardians(name_hash.clone()))
-            .ok_or(NamesError::NotGuardian)?;
-
-        if !Self::is_guardian(&approver, &config.guardians) {
-            return Err(NamesError::NotGuardian);
-        }
-
-        let mut proposal: RecoveryProposal = env
-            .storage()
-            .instance()
-            .get(&DataKey::Recovery(name_hash.clone()))
-            .ok_or(NamesError::NoProposal)?;
-
-        for i in 0..proposal.approvals.len() {
-            if proposal.approvals.get_unchecked(i) == approver {
-                return Err(NamesError::AlreadyApproved);
-            }
-        }
-
-        proposal.approvals.push_back(approver);
-
-        let threshold_met = proposal.approvals.len() >= config.threshold;
-        let delay_elapsed = env.ledger().sequence() >= proposal.proposed_at + DELAY_WINDOW;
-
-        if threshold_met && delay_elapsed {
-            let name_key = DataKey::Name(name_hash.clone());
-            let entry: NameEntry = env
-                .storage()
-                .instance()
-                .get(&name_key)
-                .ok_or(NamesError::NameNotFound)?;
-
-            // Update reverse lookup.
-            let old_meta_hash = BytesN::from_array(
-                &env,
-                &env.crypto().sha256(&entry.stealth_meta_address).to_array(),
-            );
-            env.storage()
-                .instance()
-                .remove(&DataKey::Reverse(old_meta_hash));
-
-            let new_meta_hash = BytesN::from_array(
-                &env,
-                &env.crypto().sha256(&proposal.new_meta_address).to_array(),
-            );
-            env.storage()
-                .instance()
-                .set(&DataKey::Reverse(new_meta_hash), &name_hash);
-
-            env.storage().instance().set(
-                &name_key,
-                &NameEntry {
-                    name: entry.name,
-                    stealth_meta_address: proposal.new_meta_address,
-                    owner: proposal.new_owner,
-                },
-            );
-            env.storage()
-                .instance()
-                .remove(&DataKey::Recovery(name_hash.clone()));
-            env.storage()
-                .instance()
-                .remove(&DataKey::Guardians(name_hash));
-        } else {
-            env.storage()
-                .instance()
-                .set(&DataKey::Recovery(name_hash), &proposal);
-        }
-
-        Ok(())
-    }
-
-    /// Cancel a pending recovery. Caller must be the current owner and within the delay window.
-    pub fn cancel_recovery(env: Env, name: String) -> Result<(), NamesError> {
-        let name_hash = Self::hash_name(&env, &name);
-        let entry: NameEntry = env
-            .storage()
-            .instance()
-            .get(&DataKey::Name(name_hash.clone()))
-            .ok_or(NamesError::NameNotFound)?;
-
-        entry.owner.require_auth();
-
-        let proposal: RecoveryProposal = env
-            .storage()
-            .instance()
-            .get(&DataKey::Recovery(name_hash.clone()))
-            .ok_or(NamesError::NoProposal)?;
-
-        if env.ledger().sequence() >= proposal.proposed_at + DELAY_WINDOW {
-            return Err(NamesError::DelayNotElapsed);
-        }
-
-        env.storage()
-            .instance()
-            .remove(&DataKey::Recovery(name_hash));
-
-        Ok(())
-    }
-
-    // ── helpers ──────────────────────────────────────────────────────────────
-
-    fn is_guardian(addr: &Address, guardians: &Vec<Address>) -> bool {
-        for i in 0..guardians.len() {
-            if guardians.get_unchecked(i) == *addr {
-                return true;
-            }
-        }
-        false
-    }
-
+    /// Hash a name string to BytesN<32> for use as storage key.
     fn hash_name(env: &Env, name: &String) -> BytesN<32> {
         let len = name.len() as usize;
         let mut buf = [0u8; 32];
