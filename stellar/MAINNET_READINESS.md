@@ -18,7 +18,7 @@ This document tracks the requirements and status for launching the Stellar Smart
 
 ## Operations
 
-- [ ] **Deployment Script**: Tested on Futurenet; dry-run performed for Mainnet. [#07](#07)
+- [x] **Deployment Script**: Tested on Futurenet; dry-run performed for Mainnet. [#07](#07) — completed in [#54](https://github.com/wraith-protocol/contracts/issues/54); see `stellar/deployments/futurenet.json` and `stellar/DEPLOYMENT.md`.
 - [ ] **Upgrade Governance**: Decision finalized and signers configured in technical controls. [#11](#11)
   - See [GOVERNANCE.md](./GOVERNANCE.md) for governance model
   - Upgrade authority enforcement tests: [Issue #57](https://github.com/wraith-protocol/contracts/issues/57)
