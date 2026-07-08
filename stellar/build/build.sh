@@ -5,7 +5,7 @@ set -euo pipefail
 # It builds the contracts, optimizes them, and outputs attestation.json.
 
 WORKSPACE_DIR="/workspace"
-cd $WORKSPACE_DIR/contracts/stellar
+cd $WORKSPACE_DIR/stellar
 
 echo "Building contracts in $(pwd)..."
 
