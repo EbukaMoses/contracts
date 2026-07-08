@@ -60,7 +60,7 @@ jobs:
         run: |
           docker create --name builder stellar-attestation-builder
           docker start -a builder
-          docker cp builder:/workspace/contracts/stellar/build/attestation.json ./attestation.json
+          docker cp builder:/workspace/stellar/build/attestation.json ./attestation.json
           docker rm builder
           echo "Attestation generated."
 

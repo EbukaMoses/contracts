@@ -35,21 +35,21 @@ RUN cargo install --locked stellar-cli --version ${STELLAR_CLI_VERSION}
 WORKDIR /workspace
 
 # Copy the entire workspace repository (done by Docker build context)
-# The rust-toolchain.toml is expected in /workspace/contracts/stellar/build/rust-toolchain.toml
+# The rust-toolchain.toml is expected in /workspace/stellar/build/rust-toolchain.toml
 # or we just rely on cargo recognizing it if we copy it to the root or the stellar contracts dir.
 COPY . .
 
-# Since rust-toolchain.toml is in contracts/stellar/build, let's copy it to contracts/stellar so rustup picks it up automatically
-RUN cp contracts/stellar/build/rust-toolchain.toml contracts/stellar/rust-toolchain.toml
+# Since rust-toolchain.toml is in stellar/build, let's copy it to contracts/stellar so rustup picks it up automatically
+RUN cp stellar/build/rust-toolchain.toml stellar/rust-toolchain.toml
 
 # Pre-install the pinned rust toolchain based on rust-toolchain.toml
-RUN cd contracts/stellar && rustup show
+RUN cd stellar && rustup show
 
 # Set build arguments for the script
 ARG COMMIT_HASH
 ENV COMMIT_HASH=${COMMIT_HASH}
 
 # Make build script executable and set it as the entrypoint
-RUN chmod +x contracts/stellar/build/build.sh
+RUN chmod +x stellar/build/build.sh
 
-ENTRYPOINT ["contracts/stellar/build/build.sh"]
+ENTRYPOINT ["stellar/build/build.sh"]
