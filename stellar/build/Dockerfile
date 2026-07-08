@@ -17,8 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install rustup
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+# Install rustup with a default stable toolchain so `cargo install` below works.
+# The pinned toolchain-file toolchain (rust-toolchain.toml) gets layered on top
+# by rustup when we `cd contracts/stellar` further down.
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
 
 # Add cargo to PATH
 ENV PATH="/root/.cargo/bin:${PATH}"
