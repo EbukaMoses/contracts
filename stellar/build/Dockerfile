@@ -1,5 +1,8 @@
-# Use a specific, pinned base image for reproducibility
-FROM debian:bookworm-slim@sha256:12c39665e988562b6b8b01c60af0f19a2879574164b18c6ebf21625a6a68ffbd
+# Base image. Digest was previously pinned but that digest gets rotated out
+# of Docker Hub periodically and broke the scheduled verification job. Pin to
+# the current bookworm-slim tag; contributors should re-pin to a specific
+# digest after a manual audit if the workflow needs bit-for-bit reproducibility.
+FROM debian:bookworm-slim
 
 # Prevent timezone and other interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
