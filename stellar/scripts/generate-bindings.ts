@@ -1,8 +1,10 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 
 // Define paths
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STELLAR_DIR = path.resolve(__dirname, '..');
 const BINDINGS_DIR = path.join(STELLAR_DIR, 'bindings', 'typescript');
 const CONFIG_FILE = path.join(STELLAR_DIR, 'contract-ids.json');
