@@ -85,7 +85,7 @@ jobs:
           sudo ln -sf /usr/local/bin/stellar /usr/local/bin/soroban
           stellar --version
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.88.0
         with:
           targets: wasm32-unknown-unknown
           components: rustfmt
@@ -125,7 +125,7 @@ jobs:
         working-directory: stellar
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.88.0
         with:
           components: rustfmt
       - run: cargo fmt --all --check

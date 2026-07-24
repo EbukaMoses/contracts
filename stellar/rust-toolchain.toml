@@ -1,0 +1,9 @@
+[toolchain]
+# Pinned so soroban-sdk 22.0.11 compiles. Newer rustc trips several E0432
+# / E0433 in the SDK crate's transitive deps. Keep in sync with
+# `stellar/build/rust-toolchain.toml` (used by the reproducible-build
+# Docker image).
+channel = "1.88.0"
+targets = ["wasm32-unknown-unknown"]
+components = ["rust-std", "rustfmt"]
+profile = "minimal"
