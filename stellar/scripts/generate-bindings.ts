@@ -168,25 +168,30 @@ async function main() {
     }
   }
 
-  // Local compilation if in WASM mode. We build each cdylib crate explicitly
-  // with `-p` so cargo's feature unifier does not turn on `testutils` (a
-  // dev-dep feature that isn't valid on the wasm target).
+  // Local compilation if in WASM mode. Reuse existing WASM artifacts when
+  // present so this step is idempotent alongside a preceding
+  // `cargo build --target wasm32-unknown-unknown --release` in CI.
   if (needsLocalCompilation) {
     console.log('⚙️ No contract IDs detected for some or all contracts. Using local WASM mode.');
-    console.log('🔨 Compiling Soroban contracts to WASM locally (cargo build)...');
-    const packageFlags = CONTRACTS.map((c) => `-p ${c.crateName}`).join(' ');
-    try {
-      execSync(
-        `cargo build --target wasm32-unknown-unknown --release ${packageFlags}`,
-        {
+    const releaseDir = path.join(STELLAR_DIR, 'target', 'wasm32-unknown-unknown', 'release');
+    const artifactsPresent =
+      fs.existsSync(releaseDir) &&
+      CONTRACTS.every((c) => fs.existsSync(path.join(releaseDir, c.wasmName)));
+
+    if (artifactsPresent) {
+      console.log('♻️  Reusing existing WASM artifacts in target/wasm32-unknown-unknown/release/');
+    } else {
+      console.log('🔨 Compiling Soroban contracts to WASM locally (cargo build)...');
+      try {
+        execSync('cargo build --target wasm32-unknown-unknown --release', {
           cwd: STELLAR_DIR,
           stdio: 'inherit',
-        },
-      );
-      console.log('✅ Local compilation succeeded!\n');
-    } catch (err) {
-      console.error('❌ Local cargo build failed. Make sure you have the rust/wasm32 toolchain installed.');
-      process.exit(1);
+        });
+        console.log('✅ Local compilation succeeded!\n');
+      } catch (err) {
+        console.error('❌ Local cargo build failed. Make sure you have the rust/wasm32 toolchain installed.');
+        process.exit(1);
+      }
     }
   }
 
