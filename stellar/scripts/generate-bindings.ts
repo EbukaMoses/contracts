@@ -168,15 +168,21 @@ async function main() {
     }
   }
 
-  // Local compilation if in WASM mode
+  // Local compilation if in WASM mode. We build each cdylib crate explicitly
+  // with `-p` so cargo's feature unifier does not turn on `testutils` (a
+  // dev-dep feature that isn't valid on the wasm target).
   if (needsLocalCompilation) {
     console.log('⚙️ No contract IDs detected for some or all contracts. Using local WASM mode.');
     console.log('🔨 Compiling Soroban contracts to WASM locally (cargo build)...');
+    const packageFlags = CONTRACTS.map((c) => `-p ${c.crateName}`).join(' ');
     try {
-      execSync('cargo build --target wasm32-unknown-unknown --release', {
-        cwd: STELLAR_DIR,
-        stdio: 'inherit',
-      });
+      execSync(
+        `cargo build --target wasm32-unknown-unknown --release ${packageFlags}`,
+        {
+          cwd: STELLAR_DIR,
+          stdio: 'inherit',
+        },
+      );
       console.log('✅ Local compilation succeeded!\n');
     } catch (err) {
       console.error('❌ Local cargo build failed. Make sure you have the rust/wasm32 toolchain installed.');
