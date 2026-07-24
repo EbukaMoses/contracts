@@ -186,3 +186,4 @@ Our smart contracts (`stealth-registry`, `wraith-names`, `stealth-sender`) utili
 *   **Recovery Scope:** All name entries and reverse entries are stored within the contract instance.
 *   **Procedure:** Follow the same steps as `stealth-registry`. The CLI will verify the status of the contract instance and code, scan event logs to verify individual name entries, and restore them.
 
+
