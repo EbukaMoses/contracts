@@ -44,7 +44,7 @@ impl StealthRegistryContract {
         registrant: Address,
         scheme_id: u32,
         stealth_meta_address: Bytes,
-    Result<(), RegistryError> {
+    ) -> Result<(), RegistryError> {
         // Require authorisation from the registrant.
         registrant.require_auth();
 
