@@ -1,7 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Bytes, Env, Vec,
+    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Bytes, Env,
+    IntoVal, Vec,
 };
 use wraith_metrics::{contract_ids, dimension_names, emit_metric, metric_names};
 

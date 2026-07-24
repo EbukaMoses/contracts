@@ -23,7 +23,8 @@ fn test_register_and_lookup() {
 
     let events = env.events().all();
     assert!(!events.is_empty());
-    let event = events.last().unwrap();
+    // register_keys emits the register event first, then a wraith-metrics event.
+    let event = events.first().unwrap();
     let expected_topics: soroban_sdk::Vec<Val> = vec![
         &env,
         symbol_short!("register").into_val(&env),

@@ -3,7 +3,7 @@
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short,
     token::Client as TokenClient,
-    Address, Env, Vec,
+    Address, Env, IntoVal, Vec,
 };
 use wraith_metrics::{contract_ids, dimension_names, emit_metric, metric_names};
 
@@ -94,7 +94,7 @@ impl StealthBatchSender {
         // Batch-level summary event
         env.events().publish(
             (symbol_short!("BATCH"),),
-            (from, count, asset),
+            (from, count, asset.clone()),
         );
 
         // Emit metric events.
