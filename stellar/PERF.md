@@ -68,7 +68,7 @@ ownership checks.
 ## Current Numbers
 
 <!-- BENCH:CURRENT:START -->
-These are the harness results auto-updated from `develop` (measured 2026-08-06, commit `044b9e31bc3c`).
+These are the harness results auto-updated from `develop` (measured 2026-08-26, commit `233c055dcee3`).
 
 | Contract | Function | Parameters | Instructions | Mem bytes | Read entries | Write entries | Read bytes | Write bytes | Event bytes |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -85,10 +85,10 @@ These are the harness results auto-updated from `develop` (measured 2026-08-06, 
 | stealth-sender | batch_send | batch_size=5 | 853185 | 125400 | 6 | 7 | 1232 | 1416 | 3056 |
 | stealth-sender | batch_send | batch_size=10 | 1674743 | 250790 | 6 | 12 | 1232 | 2536 | 5356 |
 | stealth-sender | batch_send | batch_size=25 | 4352799 | 695660 | 6 | 27 | 1232 | 5896 | 12256 |
-| wraith-names | register | name_len=3 | 83942 | 10503 | 2 | 3 | 104 | 568 | 204 |
-| wraith-names | register | name_len=32 | 84490 | 10473 | 2 | 3 | 104 | 596 | 232 |
-| wraith-names | resolve | hit | 34962 | 3569 | 2 | 0 | 440 | 0 | 0 |
-| wraith-names | resolve | miss | 23559 | 2214 | 2 | 0 | 104 | 0 | 0 |
+| wraith-names | register | name_len=3 | 88106 | 10944 | 2 | 3 | 104 | 568 | 348 |
+| wraith-names | register | name_len=32 | 88654 | 10914 | 2 | 3 | 104 | 596 | 376 |
+| wraith-names | resolve | hit | 39126 | 4010 | 2 | 0 | 440 | 0 | 144 |
+| wraith-names | resolve | miss | 27723 | 2655 | 2 | 0 | 104 | 0 | 0 |
 | wraith-names | name_of | hit | 49222 | 4865 | 3 | 0 | 604 | 0 | 0 |
 | wraith-names | name_of | miss | 25374 | 2127 | 2 | 0 | 104 | 0 | 0 |
 <!-- BENCH:CURRENT:END -->
