@@ -19,16 +19,16 @@ use harness::ChaosClient;
 use soroban_sdk::testutils::{Address as _, Ledger as _};
 use soroban_sdk::{Address, Bytes, BytesN, Env, String as SorobanString};
 
+use governance::{GovernanceContract, GovernanceContractClient};
 use stealth_announcer::{
     StealthAnnouncerContract, StealthAnnouncerContractClient, STELLAR_V2_SCHEME_ID,
 };
+use stealth_batch_sender::{StealthBatchSender, StealthBatchSenderClient, Transfer};
 use stealth_registry::{StealthRegistryContract, StealthRegistryContractClient};
 use stealth_sender::{StealthSenderContract, StealthSenderContractClient};
-use wraith_names::{WraithNamesContract, WraithNamesContractClient};
-use stealth_vault::{StealthVaultContract, StealthVaultContractClient};
 use stealth_splitter::{Beneficiary, StealthSplitterContract, StealthSplitterContractClient};
-use stealth_batch_sender::{StealthBatchSender, StealthBatchSenderClient, Transfer};
-use governance::{GovernanceContract, GovernanceContractClient};
+use stealth_vault::{StealthVaultContract, StealthVaultContractClient};
+use wraith_names::{WraithNamesContract, WraithNamesContractClient};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -533,15 +533,7 @@ fn vault_deposit_and_claim_through_chaos() {
         let epk = bytes32(&env, &[0xcc; 32]);
 
         // deposit: unlock at ledger 10, refund after 2010 (> 10 + DEFAULT_GRACE_PERIOD 1000)
-        let deposit_id = vault.deposit(
-            &sender,
-            &recipient,
-            &500,
-            &token,
-            &10u32,
-            &2010u32,
-            &epk,
-        );
+        let deposit_id = vault.deposit(&sender, &recipient, &500, &token, &10u32, &2010u32, &epk);
 
         // Advance ledger past unlock.
         env.ledger().with_mut(|li| li.sequence_number = 10);
@@ -580,15 +572,7 @@ fn vault_deposit_and_refund_through_chaos() {
         let recipient = Address::generate(&env);
         let epk = bytes32(&env, &[0xdd; 32]);
 
-        let deposit_id = vault.deposit(
-            &sender,
-            &recipient,
-            &300,
-            &token,
-            &10u32,
-            &2010u32,
-            &epk,
-        );
+        let deposit_id = vault.deposit(&sender, &recipient, &300, &token, &10u32, &2010u32, &epk);
 
         let token_client = soroban_sdk::token::Client::new(&env, &token);
         let balance_after_deposit = token_client.balance(&sender);
@@ -665,13 +649,17 @@ fn splitter_create_and_fund_through_chaos() {
             bytes32(&env, &[0x01u8; 32]),
             bytes32(&env, &[0x02u8; 32])
         ];
-        let metadatas = soroban_sdk::vec![
-            &env,
-            bytes(&env, &[0x01]),
-            bytes(&env, &[0x02])
-        ];
+        let metadatas = soroban_sdk::vec![&env, bytes(&env, &[0x01]), bytes(&env, &[0x02])];
 
-        splitter.fund_split(&funder, &split_id, &1000, &1u32, &stealth_addrs, &epks, &metadatas);
+        splitter.fund_split(
+            &funder,
+            &split_id,
+            &1000,
+            &1u32,
+            &stealth_addrs,
+            &epks,
+            &metadatas,
+        );
 
         let details = splitter.get_split(&split_id);
         assert_eq!(details.total_funded, 1000);
